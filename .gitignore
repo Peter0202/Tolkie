@@ -164,3 +164,5 @@ cython_debug/
 prompts/
 models/fietje/model/
 models/geitje/model/
+models/mistral/model/
+
