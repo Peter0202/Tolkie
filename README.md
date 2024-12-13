@@ -46,6 +46,10 @@ https://www.python.org/downloads/release/python-3116/
 > Note: You might have to add a path to your python version manually using system environment variables.
 
 ### Install Python Libraries:
+To get your own install link for your graphicscard: 
+https://pytorch.org/
+![](pytorch.png)
+
 Open powershell as administrator:
 ```bash 
 pip install flask transformers
