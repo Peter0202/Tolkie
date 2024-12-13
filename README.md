@@ -50,7 +50,7 @@ Open powershell as administrator:
 ```bash 
 pip install flask transformers
 pip install safetensors
-pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
+pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124 #<<< CHANGE TO YOUR OWN VERSION
 pip install accelerate
 pip install sentencepiece
 pip install blobfile
