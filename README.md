@@ -31,7 +31,79 @@ In order to use the Tolkie models, you need to add prompt files in the prompts d
 
 > Note: Use the Tolkie-made prompts for the best results.
 
-## Running in Docker
+# Running locally
+To run the application locally, first install the correct python version with libraries
+
+### Using Chocolatey Install:
+Open powershell as administrator:
+```bash 
+choco install python --version=3.11.6
+```
+
+### Using Installer:
+Just download the installer and follow the instructions:
+https://www.python.org/downloads/release/python-3116/
+> Note: You might have to add a path to your python version manually using system environment variables.
+
+### Install Python Libraries:
+Open powershell as administrator:
+```bash 
+pip install flask transformers
+pip install safetensors
+pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
+pip install accelerate
+pip install sentencepiece
+pip install blobfile
+pip install tiktoken
+pip install huggingface_hub
+pip install requests
+```
+> Note: There might be more requirements, just install them the same way if required.
+
+### Download Models
+Navigate to the root of the project and download the models using the following commands:
+
+```bash 
+python scripts/download_fietje.py
+python scripts/download_geitje.py
+python scripts/download_mistral.py
+python scripts/download_all_models.py
+```
+
+> Note: Download_mistral.py & download_all_models.py require huggingface account & permissions.
+
+> Note: Just download fietje & geitje if you dont have them.
+
+### Test it
+Open powershell terminal in root:
+```bash
+python app.py
+```
+
+Open powershell terminal in root:
+```bash
+cd .\models\fietje\
+python fietje_model.py
+```
+
+Open powershell terminal in root:
+```bash
+cd .\models\geitje\
+python geitje_model.py
+```
+
+Open cmd/commandprompt terminal in root: 
+```bash
+curl -X POST -H "Content-Type: application/json" -d "@example.json" http://localhost:8002/generate
+```
+> Note: You should edit example.json for testing requests:
+> - model: geitje/fietje
+> - prompt_version: 0/1/... if you add more prompts
+> - text: text it should test, experiment
+
+> Note: Not more than one model at the same time, your pc will die.
+
+# Running in Docker
 To run the application with docker, run the following command:
 
 ```bash
