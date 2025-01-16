@@ -4,8 +4,6 @@ from accelerate import infer_auto_device_map
 import torch
 
 app = Flask(__name__)
-
-# Path to the locally saved model
 model_name = "./model"
 
 print("Loading tokenizer...")
@@ -13,39 +11,39 @@ tokenizer = AutoTokenizer.from_pretrained(model_name)
 
 print("Loading model with device map...")
 
-# Step 1: Temporarily initialize the model to infer device_map
+# init model
 model_dummy = AutoModelForCausalLM.from_pretrained(
     model_name,
     torch_dtype=torch.float16,
-    low_cpu_mem_usage=True  # Reduce CPU memory usage during loading
-)
+    low_cpu_mem_usage=True
+)  # <-- Added closing parenthesis here
 
 device_map = infer_auto_device_map(
     model_dummy,
-    no_split_module_classes=["LlamaDecoderLayer"],  # Use your model's architecture
-    max_memory={0: "12GiB", "cpu": "48GiB"}  # Adjust memory allocation
+    no_split_module_classes=["LlamaDecoderLayer"],
+    max_memory={0: "12GiB", "cpu": "48GiB"}  # adjust if needed
 )
 
-# Step 2: Load the actual model with the device_map
+# load model w/ devicemap
 model = AutoModelForCausalLM.from_pretrained(
     model_name,
     torch_dtype=torch.float16,
     device_map=device_map,
     low_cpu_mem_usage=True,
-    offload_folder="./offload"  # Folder for offloading layers if memory is exceeded
+    offload_folder="./offload"
 )
 
-# Log device placement for debugging
+# log devices
 for name, param in model.named_parameters():
     print(f"{name}: {param.device}")
 
-# Initialize the text generation pipeline
+# init pipeline
 print("Initializing text-generation pipeline...")
 text_generator = pipeline(
     "text-generation",
     model=model,
     tokenizer=tokenizer,
-    truncation=True  # Enable truncation to prevent token overflow
+    truncation=True
 )
 
 def sliding_window_chunks(text, tokenizer, max_tokens=2048, overlap=512):
@@ -53,11 +51,11 @@ def sliding_window_chunks(text, tokenizer, max_tokens=2048, overlap=512):
     Splits the text into overlapping chunks of `max_tokens` size.
     """
     tokens = tokenizer.encode(text, truncation=False)
-    print(f"Total tokens in input: {len(tokens)}")  # Debugging log
+    print(f"Total tokens in input: {len(tokens)}")
 
     if len(tokens) <= max_tokens:
         print("Input fits within max_tokens. No need for sliding window.")
-        return [tokens]  # Return as a single chunk
+        return [tokens]
 
     chunks = []
     for i in range(0, len(tokens), max_tokens - overlap):
@@ -77,8 +75,8 @@ def generate():
     prompt = data.get("prompt", "")
 
     try:
-        max_tokens = 2048  # Model's maximum token capacity
-        overlap = 512  # Overlap for context preservation
+        max_tokens = 2048
+        overlap = 512
         chunks = sliding_window_chunks(prompt, tokenizer, max_tokens, overlap)
 
         responses = []
@@ -86,7 +84,7 @@ def generate():
             chunk_text = tokenizer.decode(chunk, skip_special_tokens=True)
             print(f"Processing chunk (tokens: {len(chunk)}): {chunk_text}...")
 
-            # Generate text for the chunk
+            # generate text
             generated_text = text_generator(
                 chunk_text,
                 max_new_tokens=512,
@@ -108,7 +106,6 @@ def generate():
         print(f"Error response: {error_response}")
         return jsonify(error_response), 500
 
-
 if __name__ == '__main__':
-    # Run the Flask server
+    # flask server
     app.run(host='0.0.0.0', port=8002)

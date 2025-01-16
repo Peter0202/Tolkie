@@ -4,17 +4,16 @@ from flask import Flask, request, jsonify
 from transformers import AutoTokenizer
 import logging
 
-# Set up logging
 logging.basicConfig(
-    level=logging.DEBUG,  # Set logging level to DEBUG for detailed output
-    format="%(asctime)s [%(levelname)s] %(message)s",  # Include timestamps in logs
+    level=logging.DEBUG,
+    format="%(asctime)s [%(levelname)s] %(message)s",
     handlers=[
-        logging.StreamHandler()  # Output logs to the console
+        logging.StreamHandler()
     ]
 )
 logger = logging.getLogger(__name__)
 
-# Define the paths for each model
+# define paths
 MODEL_PATHS = {
     "fietje": "./models/fietje/model",
     "geitje": "./models/geitje/model"
@@ -35,39 +34,22 @@ def load_prompt(model_name, prompt_version):
         with open(prompt_path, "r", encoding="utf-8") as file:
             return file.read().strip()
 
-    # Fallback to universal prompt
-    universal_prompt_file = f"prompt_v{prompt_version}_universal.txt"
-    universal_prompt_path = os.path.join(prompt_folder, universal_prompt_file)
-    logger.warning(f"Model-specific prompt not found. Falling back to universal prompt at: {universal_prompt_path}")
-
-    if os.path.exists(universal_prompt_path):
-        with open(universal_prompt_path, "r", encoding="utf-8") as file:
-            return file.read().strip()
-
-    # No prompt found
     logger.error(f"No prompt found for model '{model_name}' and version '{prompt_version}'")
     return None
 
-def chunk_text(text, tokenizer, max_tokens=512, overlap=100):
-    """
-    Split input text into manageable chunks based on token limit.
-    """
-    logger.debug("Chunking text for processing...")
-    encoded = tokenizer.encode(text)
-    chunks = []
-    for i in range(0, len(encoded), max_tokens - overlap):
-        chunk = encoded[i:i + max_tokens]
-        chunks.append(tokenizer.decode(chunk, skip_special_tokens=True))
-    logger.debug(f"Generated {len(chunks)} chunks.")
-    return chunks
-
-def send_prompt_to_model(prompt_text, model_choice):
+def send_prompt_to_model(prompt_text, assistant_part, model_choice):
     """
     Sends the prompt to the model's Flask endpoint and returns the response.
     """
-    model_url = f"http://localhost:8003/generate" if model_choice == "fietje" else f"http://localhost:8002/generate"
-    payload = {"prompt": prompt_text}
-    logger.info(f"Sending request to {model_url} with payload length: {len(prompt_text)} characters")
+    # Decide which model endpoint to call
+    model_url = "http://localhost:8003/generate" if model_choice == "fietje" else "http://localhost:8002/generate"
+
+    # Combine final prompt if assistant_part is present
+    final_prompt = f"{prompt_text}\n\n{assistant_part}" if assistant_part else prompt_text
+
+    payload = {"prompt": final_prompt}
+    logger.info(f"Sending request to {model_url} with payload length: {len(final_prompt)} characters")
+
     try:
         response = requests.post(model_url, json=payload)
         response.raise_for_status()
@@ -85,11 +67,11 @@ def generate():
     """
     logger.info("Received request at /generate endpoint.")
     try:
-        # Extract parameters from request
+        # extract parameters
         data = request.json
         logger.debug(f"Request JSON: {data}")
 
-        # Validate model choice dynamically
+        # validate model choice
         model_choice = data.get("model", "").strip().lower()
         if not model_choice or model_choice not in MODEL_PATHS:
             error_msg = f"Invalid or missing model choice: {model_choice}. Must be one of {list(MODEL_PATHS.keys())}."
@@ -98,24 +80,25 @@ def generate():
 
         prompt_version = data.get("prompt_version", "0")  # Default version is 0
         custom_text = data.get("text", "")
+        assistant_part = data.get("assistant", "")  # <-- new field from your JSON
 
-        # Load the correct tokenizer dynamically based on model choice
+        # load the correct tokenizer based on model choice
         model_path = MODEL_PATHS[model_choice]
         tokenizer = AutoTokenizer.from_pretrained(model_path)
 
-        # Load the correct prompt
+        # load the correct prompt
         default_prompt = load_prompt(model_choice, prompt_version)
         if not default_prompt:
             error_msg = f"No prompt found for model '{model_choice}' and version '{prompt_version}'."
             logger.error(error_msg)
             return jsonify({"error": error_msg}), 404
 
-        # Combine prompt with text
+        # combine prompt with text (but do not yet attach assistant_part)
         combined_prompt = f"{default_prompt}\n\n{custom_text}"
         logger.debug(f"Combined prompt: {combined_prompt[:200]}...")
 
-        # Send prompt to the correct model endpoint
-        translated_text = send_prompt_to_model(combined_prompt, model_choice)
+        # send prompt + assistant part to correct model endpoint
+        translated_text = send_prompt_to_model(combined_prompt, assistant_part, model_choice)
         if translated_text:
             logger.info("Response successfully generated.")
             return jsonify({"response": translated_text})

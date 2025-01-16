@@ -1,11 +1,11 @@
 import subprocess
 
-# Paths to individual scripts
+# paths to scripts
 scripts = [
     "scripts/download_fietje.py",
-    "scripts/download_geitje.py",
-    "scripts/download_mistral.py"
+    "scripts/download_geitje.py"
 ]
+    # "scripts/download_mistral.py"
 
 def run_script(script_path):
     """
@@ -18,7 +18,6 @@ def run_script(script_path):
     except subprocess.CalledProcessError as e:
         print(f"Error while running {script_path}: {e}\n")
 
-# Execute all scripts
 for script in scripts:
     run_script(script)
 
